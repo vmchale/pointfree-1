@@ -58,7 +58,12 @@ Test-suite tests
   Type: exitcode-stdio-1.0
 
   Main-is: Test.hs
-  Other-modules:
+  Other-modules: Plugin.Pl.Common
+                 Plugin.Pl.Parser
+                 Plugin.Pl.PrettyPrinter
+                 Plugin.Pl.Optimize
+                 Plugin.Pl.Rules
+                 Plugin.Pl.Transform
 
   Build-depends:
     array >= 0.3 && < 0.6,

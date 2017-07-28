@@ -1,25 +1,26 @@
 module Main (main) where
 
-import Test.HUnit
-import Test.QuickCheck
+import           Test.HUnit
+import           Test.QuickCheck
 
-import Plugin.Pl.Common
-import Plugin.Pl.Transform
-import Plugin.Pl.Parser
-import Plugin.Pl.PrettyPrinter
-import Plugin.Pl.Optimize
+import           Plugin.Pl.Common
+import           Plugin.Pl.Optimize
+import           Plugin.Pl.Parser
+import           Plugin.Pl.PrettyPrinter
+import           Plugin.Pl.Transform
 
-import Data.Char (isSpace)
+import           Data.Char               (isSpace)
 
-import System.IO (hSetBuffering, stdout, BufferMode(NoBuffering))
-import System.Environment (getArgs)
-import System.Exit (exitFailure)
+import           System.Environment      (getArgs)
+import           System.Exit             (exitFailure)
+import           System.IO               (BufferMode (NoBuffering),
+                                          hSetBuffering, stdout)
 
 instance Arbitrary Expr where
   arbitrary = sized $ \size -> frequency $ zipWith (,) [1,size,size]
     [arbVar,
      liftM2 Lambda arbitrary arbitrary,
-     let se = resize (size `div` 2) arbitrary in liftM2 App se se ] 
+     let se = resize (size `div` 2) arbitrary in liftM2 App se se ]
 
   shrink (Var _ _) = []
   shrink (Lambda v e) =
@@ -30,7 +31,7 @@ instance Arbitrary Expr where
   shrink (Let{}) = error "Expr.shrink: Let"
 
 instance Arbitrary Pattern where
-  arbitrary = sized $ \size -> 
+  arbitrary = sized $ \size ->
     let
       spat = resize (size `div` 5) arbitrary
     in
@@ -44,7 +45,7 @@ instance Arbitrary Pattern where
   shrink (PTuple p q) = [p,q] ++ map (PTuple p) (shrink q) ++ map (flip PTuple q) (shrink p)
 
 arbVar :: Gen Expr
-arbVar = oneof [(Var Pref . return) `fmap` choose ('a','z'), 
+arbVar = oneof [(Var Pref . return) `fmap` choose ('a','z'),
                 (Var Inf .  return) `fmap` elements "!#$%^*./-+:?<>&"]
 
 propRoundTrip :: Expr -> Bool
@@ -64,7 +65,7 @@ qcTests = do
 
 pf :: String -> IO ()
 pf inp = case parsePF inp of
-  Right d -> do 
+  Right d -> do
     putStrLn "Your expression:"
     print d
     putStrLn "Transformed to pointfree style:"
@@ -77,7 +78,7 @@ pf inp = case parsePF inp of
 unitTest :: String -> [String] -> Test
 unitTest inp out = TestCase $ do
   d <- case parsePF inp of
-    Right x -> return x
+    Right x  -> return x
     Left err -> fail $ "Parse error on input " ++ inp ++ ": " ++ err
   let res = prettyTopLevel (mapTopLevel (last . optimize . transform) d)
   case out of
@@ -108,6 +109,7 @@ unitTests = TestList [
   unitTest "any id" ["or"],
   unitTest "and . map f" ["all f"],
   unitTest "or . map f" ["any f"],
+  unitTest "\\x y -> y + 2 * x" ["(+y) .* (2*)"],
   unitTest "return ()" ["return ()"],
   unitTest "f (fix f)" ["fix f"],
   unitTest "concat ([concat (map h (k a))])" ["h =<< k a"],
@@ -155,6 +157,7 @@ unitTests = TestList [
   unitTest "\\(x,y)  -> y"  ["snd"],
   unitTest "\\x -> x" ["id"],
   unitTest "\\x y -> x" ["const"],
+  unitTest "\\f g x -> f (g x)" ["(.)"],
   unitTest "\\f x y -> f y x" ["flip"],
   unitTest "t f g x = f x (g x)" ["t = ap"],
   unitTest "(+2).(+3).(+4)" ["(9 +)"],
@@ -192,20 +195,20 @@ unitTests = TestList [
   ]
 
 main :: IO ()
-main = do 
+main = do
   hSetBuffering stdout NoBuffering
   args <- getArgs
   case args of
-    [] -> doTests
+    []       -> doTests
     ["repl"] -> pfloop
-    xs -> mapM_ pf xs
+    xs       -> mapM_ pf xs
 
 
 pfloop :: IO ()
 pfloop = do
   line' <- Just `fmap` getLine
   case line' of
-    Just line 
+    Just line
       | all isSpace line -> pfloop
       | otherwise        -> do
           pf line

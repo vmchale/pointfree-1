@@ -1,24 +1,24 @@
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE PatternGuards             #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
 --
 -- | This marvellous module contributed by Thomas J\344ger
 --
 module Plugin.Pl.Rules (RewriteRule(..), rules, fire) where
 
-import Plugin.Pl.Common
+import           Plugin.Pl.Common
 
-import Data.Array
-import qualified Data.Set as S
+import           Data.Array
+import qualified Data.Set          as S
 
-import Control.Monad.Fix (fix)
+import           Control.Monad.Fix (fix)
 
 --import PlModule.PrettyPrinter
 
 -- Next time I do somthing like this, I'll actually think about the combinator
 -- language before, instead of producing something ad-hoc like this:
-data RewriteRule 
+data RewriteRule
   = RR Rewrite Rewrite
   | CRR (Expr -> Maybe Expr)
   | Down RewriteRule RewriteRule
@@ -42,12 +42,12 @@ data MExpr
 
 data Rewrite = Rewrite {
   holes :: MExpr,
-  rid :: Int -- rlength - 1
+  rid   :: Int -- rlength - 1
 } --deriving Show
 
 -- What are you gonna do when no recursive modules are possible?
 class RewriteC a where
-  getRewrite :: a -> Rewrite 
+  getRewrite :: a -> Rewrite
 
 instance RewriteC MExpr where
   getRewrite rule = Rewrite {
@@ -59,16 +59,16 @@ type ExprArr = Array Int Expr
 
 myFire :: ExprArr -> MExpr -> MExpr
 myFire xs (MApp e1 e2) = MApp (myFire xs e1) (myFire xs e2)
-myFire xs (Hole h) = Quote $ xs ! h
-myFire _ me = me
+myFire xs (Hole h)     = Quote $ xs ! h
+myFire _ me            = me
 
 nub' :: Ord a => [a] -> [a]
 nub' = S.toList . S.fromList
 
 uniqueArray :: Ord v => Int -> [(Int, v)] -> Maybe (Array Int v)
-uniqueArray n lst 
+uniqueArray n lst
   | length (nub' lst) == n = Just $ array (0,n-1) lst
-  | otherwise = Nothing              
+  | otherwise = Nothing
 
 match :: Rewrite -> Expr -> Maybe ExprArr
 match (Rewrite hl rid') e  = uniqueArray rid' =<< matchWith hl e
@@ -80,22 +80,22 @@ fire :: Rewrite -> Rewrite -> Expr -> Maybe Expr
 fire r1 r2 e = (fromMExpr . fire' r2) `fmap` match r1 e
 
 matchWith :: MExpr -> Expr -> Maybe [(Int, Expr)]
-matchWith (MApp e1 e2) (App e1' e2') = 
+matchWith (MApp e1 e2) (App e1' e2') =
   liftM2 (++) (matchWith e1 e1') (matchWith e2 e2')
 matchWith (Quote e) e' = if e == e' then Just [] else Nothing
 matchWith (Hole k) e = Just [(k,e)]
 matchWith _ _ = Nothing
 
 fromMExpr :: MExpr -> Expr
-fromMExpr (MApp e1 e2)  = App (fromMExpr e1) (fromMExpr e2)
-fromMExpr (Hole _)      = Var Pref "Hole" -- error "Hole in MExpr"
-fromMExpr (Quote e)     = e
+fromMExpr (MApp e1 e2) = App (fromMExpr e1) (fromMExpr e2)
+fromMExpr (Hole _)     = Var Pref "Hole" -- error "Hole in MExpr"
+fromMExpr (Quote e)    = e
 
 instance RewriteC a => RewriteC (MExpr -> a) where
   getRewrite rule = Rewrite {
     holes = holes . getRewrite . rule . Hole $ pid,
     rid   = pid + 1
-  } where 
+  } where
     pid = rid $ getRewrite (bt :: a)
 
 -- Yet another pointless transformation
@@ -103,9 +103,15 @@ transformM :: Int -> MExpr -> MExpr
 transformM _ (Quote e) = constE `a` Quote e
 transformM n (Hole n') = if n == n' then idE else constE `a` Hole n'
 transformM n (Quote (Var _ ".") `MApp` e1 `MApp` e2)
-  | e1 `hasHole` n && not (e2 `hasHole` n) 
+  | e1 `hasHole` n && not (e2 `hasHole` n)
   = flipE `a` compE `a` e2 `c` transformM n e1
-transformM n e@(MApp e1 e2) 
+transformM n (Quote (Var _ ".*") `MApp` e1 `MApp` e2)
+  | e1 `hasHole` n && not (e2 `hasHole` n)
+  = flipE `a` comp2E `a` e2 `c2` transformM n e1
+{--transformM n (Quote (Var _ "-.*") `MApp` e1 `MApp` e2)
+  | e1 `hasHole` n && not (e2 `hasHole` n)
+  = flipE `a` oedipusE `a` e2 `c` transformM n e1--}
+transformM n e@(MApp e1 e2)
   | fr1 && fr2 = sE `a` transformM n e1 `a` transformM n e2
   | fr1        = flipE `a` transformM n e1 `a` e2
   | fr2, Hole n' <- e2, n' == n = e1
@@ -117,8 +123,8 @@ transformM n e@(MApp e1 e2)
 
 hasHole :: MExpr -> Int -> Bool
 hasHole (MApp e1 e2) n = e1 `hasHole` n || e2 `hasHole` n
-hasHole (Quote _)   _ = False
-hasHole (Hole n')   n = n == n'
+hasHole (Quote _)   _  = False
+hasHole (Hole n')   n  = n == n'
 
 --
 -- haddock doesn't like n+k patterns, so rewrite them
@@ -153,22 +159,24 @@ rr2 r1 r2 = Or . take 3 $ rrList r1 r2
 rr0 r1 r2 = RR r1' r2' where
   r1' = getRewrite r1
   r2' = getRewrite r2
-  
+
 down, up :: RewriteRule -> RewriteRule
 down = fix . Down
 up   = fix . Up
 
 
 idE, flipE, bindE, extE, returnE, consE, appendE, nilE, foldrE, foldlE, fstE,
-  sndE, dollarE, constE, uncurryE, curryE, compE, headE, tailE, sE, commaE, 
-  fixE, foldl1E, notE, equalsE, nequalsE, plusE, multE, zeroE, oneE, lengthE, 
-  sumE, productE, concatE, concatMapE, joinE, mapE, fmapE, fmapIE, subtractE, 
-  minusE, liftME, apE, liftM2E, seqME, zipE, zipWithE, 
+  sndE, dollarE, constE, uncurryE, curryE, compE, headE, tailE, sE, commaE,
+  fixE, foldl1E, notE, equalsE, nequalsE, plusE, multE, zeroE, oneE, lengthE,
+  sumE, productE, concatE, concatMapE, joinE, mapE, fmapE, fmapIE, subtractE,
+  minusE, liftME, apE, liftM2E, seqME, zipE, zipWithE,
   crossE, firstE, secondE, andE, orE, allE, anyE :: MExpr
 idE        = Quote $ Var Pref "id"
 flipE      = Quote $ Var Pref "flip"
 constE     = Quote $ Var Pref "const"
 compE      = Quote $ Var Inf "."
+comp2E     = Quote $ Var Inf ".*"
+oedipusE   = Quote $ Var Inf "-.*"
 sE         = Quote $ Var Pref "ap"
 fixE       = Quote $ Var Pref "fix"
 bindE      = Quote $ Var Inf  ">>="
@@ -225,6 +233,7 @@ anyE       = Quote $ Var Pref "any"
 a, c :: MExpr -> MExpr -> MExpr
 a       = MApp
 c e1 e2 = compE `a` e1 `a` e2
+c2 e1 e2 = comp2E `a` e1 `a` e2
 infixl 9 `a`
 infixr 8 `c`
 
@@ -252,13 +261,13 @@ evalUnary _ _ = Nothing
 assocR, assocL, assoc :: [String] -> Expr -> Maybe Expr
 -- (f `op` g) `op` h --> f `op` (g `op` h)
 assocR ops (Var f1 op1 `App` (Var f2 op2 `App` e1 `App` e2) `App` e3)
-  | op1 == op2 && op1 `elem` ops 
+  | op1 == op2 && op1 `elem` ops
   = Just (Var f1 op1 `App` e1 `App` (Var f2 op2 `App` e2 `App` e3))
 assocR _ _ = Nothing
 
 -- f `op` (g `op` h) --> (f `op` g) `op` h
 assocL ops (Var f1 op1 `App` e1 `App` (Var f2 op2 `App` e2 `App` e3))
-  | op1 == op2 && op1 `elem` ops 
+  | op1 == op2 && op1 `elem` ops
   = Just (Var f1 op1 `App` (Var f2 op2 `App` e1 `App` e2) `App` e3)
 assocL _ _ = Nothing
 
@@ -269,7 +278,7 @@ assoc ops (Var _ "." `App` (Var f1 op1 `App` e1) `App` (Var f2 op2 `App` e2))
 assoc _ _ = Nothing
 
 commutative :: [String] -> Expr -> Maybe Expr
-commutative ops (Var f op `App` e1 `App` e2) 
+commutative ops (Var f op `App` e1 `App` e2)
   | op `elem` ops = Just (Var f op `App` e2 `App` e1)
 commutative ops (Var _ "flip" `App` e@(Var _ op)) | op `elem` ops = Just e
 commutative _ _ = Nothing
@@ -353,7 +362,7 @@ simplifies = Or [
   -- map f . map g -> map (f . g)
   rr0 (\f g -> mapE `a` f `c` mapE `a` g)
       (\f g -> mapE `a` (f `c` g))
-  
+
   ]
 
 onceRewrites :: RewriteRule
@@ -381,8 +390,16 @@ rules :: RewriteRule
 rules = Or [
   -- f (g x) --> (f . g) x
   Hard $
-  rr  (\f g x -> f `a` (g `a` x)) 
+  rr  (\f g x -> f `a` (g `a` x))
       (\f g x -> (f `c` g) `a` x),
+  -- f (g x y) --> (f .* g) x y
+  Hard $
+  rr  (\f g x y -> f `a` (g `a` x `a` y))
+      (\f g x y -> (f `c2` g) `a` x `a` y),
+  Hard $
+  rr  (\f g x y -> f `a` (g `a` x) `a` y)
+      (\f g x y -> (f `c` g) `a` x `a` y),
+  -- (>>=) --> flip (=<<)
   -- (>>=) --> flip (=<<)
   Hard $
   rr  bindE
@@ -406,7 +423,7 @@ rules = Or [
   Hard $
   rr  (\f g -> flipE `a` (f `c` g))
       (\f g -> (flipE `a` compE `a` g) `c` (flipE `a` f)),
-  -- flip (.) f . flip id --> flip f 
+  -- flip (.) f . flip id --> flip f
   rr  (\f -> (flipE `a` compE `a` f) `c` (flipE `a` idE))
       (\f -> flipE `a` f),
   -- flip (.) f . flip flip --> flip (flip . f)
@@ -415,7 +432,7 @@ rules = Or [
   -- flip (flip (flip . f) g) --> flip (flip . flip f) g
   rr1 (\f g -> flipE `a` (flipE `a` (flipE `c` f) `a` g))
       (\f g -> flipE `a` (flipE `c` flipE `a` f) `a` g),
-  
+
   -- flip (.) id --> id
   rr (flipE `a` compE `a` idE)
      idE,
@@ -465,17 +482,17 @@ rules = Or [
   rr0 (\f -> f `a` (fixE `a` f))
       (\f -> fixE `a` f),
   -- fix f --> f (f (fix x))
-  Hard $ 
+  Hard $
   rr0 (\f -> fixE `a` f)
       (\f -> f `a` (f `a` (fixE `a` f))),
   -- fix (const f) --> f
-  rr (\f -> fixE `a` (constE `a` f)) 
+  rr (\f -> fixE `a` (constE `a` f))
      (\f -> f),
   -- flip const x --> id
   rr  (\x -> flipE `a` constE `a` x)
       (\_ -> idE),
   -- const . f --> flip (const f)
-  Hard $ 
+  Hard $
   rr  (\f -> constE `c` f)
       (\f -> flipE `a` (constE `a` f)),
   -- not (x == y) -> x /= y
@@ -549,9 +566,9 @@ rules = Or [
   Hard $
   rr (\f -> extE `c` flipE `a` (fmapE `c` f))
      (\f -> flipE `a` liftM2E `a` f),
-  
+
   -- (.) -> fmap
-  Hard $ 
+  Hard $
   rr compE fmapE,
 
   -- map f (zip xs ys) --> zipWith (curry f) xs ys
@@ -618,7 +635,7 @@ rules = Or [
   rr (\p q -> seqME `a` p `a` q)
      (\p q -> extE `a` (constE `a` q) `a` p),
 
-  -- experimental support for Control.Arrow stuff 
+  -- experimental support for Control.Arrow stuff
   -- (costs quite a bit of performace)
   -- uncurry ((. g) . (,) . f) --> f *** g
   rr (\f g -> uncurryE `a` ((flipE `a` compE `a` g) `c` commaE `c` f))
@@ -646,7 +663,7 @@ rules = Or [
   rr (\x -> consE `a` x `a` nilE)
      (\x -> returnE `a` x),
   -- list destructors
-  Hard $ 
+  Hard $
   If (Or [rr consE consE, rr nilE nilE]) $ Or [
     down $ Or [
       -- length [] --> 0
@@ -726,7 +743,7 @@ rules = Or [
   ] `Then` Opt (up simplifies)
 assocLOps, assocROps, assocOps :: [String]
 assocLOps = ["+", "*", "&&", "||", "max", "min"]
-assocROps = [".", "++"]
+assocROps = [".", "++", ".*"]
 assocOps  = assocLOps ++ assocROps
 
 commutativeOps :: [String]
