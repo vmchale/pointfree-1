@@ -290,6 +290,10 @@ simplifies = Or [
   -- (f . g) x --> f (g x)
   rr0 (\f g x -> (f `c` g) `a` x)
       (\f g x -> f `a` (g `a` x)),
+  -- f (g x y) --> (f .* g) x y
+  {--Hard $
+  rr  (\f g x y -> f `a` (g `a` x `a` y))
+      (\f g x y -> (f `c2` g) `a` x `a` y),--}
   -- id x --> x
   rr0 (\x -> idE `a` x)
       (\x -> x),
@@ -392,10 +396,6 @@ rules = Or [
   Hard $
   rr  (\f g x -> f `a` (g `a` x))
       (\f g x -> (f `c` g) `a` x),
-  -- f (g x y) --> (f .* g) x y
-  Hard $
-  rr  (\f g x y -> f `a` (g `a` x `a` y))
-      (\f g x y -> (f `c2` g) `a` x `a` y),
   Hard $
   rr  (\f g x y -> f `a` (g `a` x) `a` y)
       (\f g x y -> (f `c` g) `a` x `a` y),
@@ -776,4 +776,3 @@ binaryBuiltins = [
     ("&&",   BA ((&&) :: Bool -> Bool -> Bool)),
     ("||",   BA ((||) :: Bool -> Bool -> Bool))
   ]
-
