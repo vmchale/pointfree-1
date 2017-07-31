@@ -107,7 +107,7 @@ transformM n (Quote (Var _ ".") `MApp` e1 `MApp` e2)
   = flipE `a` compE `a` e2 `c` transformM n e1
 transformM n (Quote (Var _ ".*") `MApp` e1 `MApp` e2)
   | e1 `hasHole` n && not (e2 `hasHole` n)
-  = flipE `a` comp2E `a` e2 `c2` transformM n e1
+  = flipE `a` comp2E `a` (transformM n e2) `c2` transformM n e1
 {--transformM n (Quote (Var _ "-.*") `MApp` e1 `MApp` e2)
   | e1 `hasHole` n && not (e2 `hasHole` n)
   = flipE `a` oedipusE `a` e2 `c` transformM n e1--}
@@ -177,6 +177,7 @@ constE     = Quote $ Var Pref "const"
 compE      = Quote $ Var Inf "."
 comp2E     = Quote $ Var Inf ".*"
 oedipusE   = Quote $ Var Inf "-.*"
+ampersandE = Quote $ Var Inf "&"
 sE         = Quote $ Var Pref "ap"
 fixE       = Quote $ Var Pref "fix"
 bindE      = Quote $ Var Inf  ">>="
@@ -230,12 +231,13 @@ anyE       = Quote $ Var Pref "any"
 
 
 
-a, c :: MExpr -> MExpr -> MExpr
+a, c, c2 :: MExpr -> MExpr -> MExpr
 a       = MApp
 c e1 e2 = compE `a` e1 `a` e2
 c2 e1 e2 = comp2E `a` e1 `a` e2
 infixl 9 `a`
 infixr 8 `c`
+infixr 8 `c2`
 
 
 collapseLists :: Expr -> Maybe Expr
@@ -290,10 +292,12 @@ simplifies = Or [
   -- (f . g) x --> f (g x)
   rr0 (\f g x -> (f `c` g) `a` x)
       (\f g x -> f `a` (g `a` x)),
-  -- f (g x y) --> (f .* g) x y
-  {--Hard $
-  rr  (\f g x y -> f `a` (g `a` x `a` y))
-      (\f g x y -> (f `c2` g) `a` x `a` y),--}
+  -- (f .* g) x y -> f (g x y)
+  rr0  (\f g x y -> (f `c2` g) `a` x `a` y)
+       (\f g x y -> f `a` (g `a` x `a` y)),
+  -- x & f -> f x
+  rr0 (\f x -> x `a` ampersandE `a` f)
+      (\f x -> f `a` x),
   -- id x --> x
   rr0 (\x -> idE `a` x)
       (\x -> x),
@@ -396,9 +400,6 @@ rules = Or [
   Hard $
   rr  (\f g x -> f `a` (g `a` x))
       (\f g x -> (f `c` g) `a` x),
-  Hard $
-  rr  (\f g x y -> f `a` (g `a` x) `a` y)
-      (\f g x y -> (f `c` g) `a` x `a` y),
   -- (>>=) --> flip (=<<)
   -- (>>=) --> flip (=<<)
   Hard $
@@ -531,6 +532,10 @@ rules = Or [
         (\x y z -> minusE `a` (plusE `a` x `a` y) `a` z)
   ],
 
+  -- flip ($) -> &
+  rr (flipE `a` dollarE)
+     (ampersandE),
+
   Hard onceRewrites,
   -- join (fmap f x) --> f =<< x
   rr (\f x -> joinE `a` (fmapE `a` f `a` x))
@@ -567,9 +572,21 @@ rules = Or [
   rr (\f -> extE `c` flipE `a` (fmapE `c` f))
      (\f -> flipE `a` liftM2E `a` f),
 
+  -- (f .) . g --> (f .* g)
+  rr (\f g -> compE `a` f `c` g)
+     (\f g -> comp2E `a` f `a` g),
+
+  -- (x &) -> ($ x)
+  rr (\x -> ampersandE `a` x)
+     (\x -> dollarE `a` x),
+
   -- (.) -> fmap
   Hard $
   rr compE fmapE,
+
+  -- join .* map x y -> (=<<) x y
+  Hard $
+  rr (joinE `c2` mapE) extE,
 
   -- map f (zip xs ys) --> zipWith (curry f) xs ys
   Hard $
@@ -634,6 +651,7 @@ rules = Or [
   Hard $
   rr (\p q -> seqME `a` p `a` q)
      (\p q -> extE `a` (constE `a` q) `a` p),
+
 
   -- experimental support for Control.Arrow stuff
   -- (costs quite a bit of performace)

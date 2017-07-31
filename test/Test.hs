@@ -110,6 +110,7 @@ unitTests = TestList [
   unitTest "and . map f" ["all f"],
   unitTest "or . map f" ["any f"],
   unitTest "\\x y -> x == f y"  ["f .* (==)"],
+  unitTest "\\x f -> f $ x" [ "(&)" ],
   unitTest "return ()" ["return ()"],
   unitTest "f (fix f)" ["fix f"],
   unitTest "concat ([concat (map h (k a))])" ["h =<< k a"],
