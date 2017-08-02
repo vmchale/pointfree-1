@@ -108,9 +108,9 @@ transformM n (Quote (Var _ ".") `MApp` e1 `MApp` e2)
 transformM n (Quote (Var _ ".*") `MApp` e1 `MApp` e2)
   | e1 `hasHole` n && not (e2 `hasHole` n)
   = flipE `a` comp2E `a` (transformM n e2) `c2` transformM n e1
-{--transformM n (Quote (Var _ "-.*") `MApp` e1 `MApp` e2)
+transformM n (Quote (Var _ "-.*") `MApp` e1 `MApp` e2)
   | e1 `hasHole` n && not (e2 `hasHole` n)
-  = flipE `a` oedipusE `a` e2 `c` transformM n e1--}
+  = flipE `a` oedipusE `a` (transformM n e2) `o` transformM n e1
 transformM n e@(MApp e1 e2)
   | fr1 && fr2 = sE `a` transformM n e1 `a` transformM n e2
   | fr1        = flipE `a` transformM n e1 `a` e2
@@ -169,7 +169,7 @@ idE, flipE, bindE, extE, returnE, consE, appendE, nilE, foldrE, foldlE, fstE,
   sndE, dollarE, constE, uncurryE, curryE, compE, headE, tailE, sE, commaE,
   fixE, foldl1E, notE, equalsE, nequalsE, plusE, multE, zeroE, oneE, lengthE,
   sumE, productE, concatE, concatMapE, joinE, mapE, fmapE, fmapIE, subtractE,
-  minusE, liftME, apE, liftM2E, seqME, zipE, zipWithE,
+  minusE, liftME, apE, liftM2E, seqME, zipE, zipWithE, onE, oedipusE, comp2E,
   crossE, firstE, secondE, andE, orE, allE, anyE :: MExpr
 idE        = Quote $ Var Pref "id"
 flipE      = Quote $ Var Pref "flip"
@@ -177,6 +177,7 @@ constE     = Quote $ Var Pref "const"
 compE      = Quote $ Var Inf "."
 comp2E     = Quote $ Var Inf ".*"
 oedipusE   = Quote $ Var Inf "-.*"
+onE        = Quote $ Var Pref "on"
 ampersandE = Quote $ Var Inf "&"
 sE         = Quote $ Var Pref "ap"
 fixE       = Quote $ Var Pref "fix"
@@ -235,9 +236,11 @@ a, c, c2 :: MExpr -> MExpr -> MExpr
 a       = MApp
 c e1 e2 = compE `a` e1 `a` e2
 c2 e1 e2 = comp2E `a` e1 `a` e2
+o e1 e2 = oedipusE `a` e1 `a` e2
 infixl 9 `a`
 infixr 8 `c`
 infixr 8 `c2`
+infixr 8 `o`
 
 
 collapseLists :: Expr -> Maybe Expr
@@ -295,6 +298,9 @@ simplifies = Or [
   -- (f .* g) x y -> f (g x y)
   rr0  (\f g x y -> (f `c2` g) `a` x `a` y)
        (\f g x y -> f `a` (g `a` x `a` y)),
+  -- (f -.* g) x y -> f (g x) y
+  rr0  (\f g x y -> (f `o` g) `a` x `a` y)
+       (\f g x y -> f `a` (g `a` x) `a` y),
   -- x & f -> f x
   rr0 (\f x -> x `a` ampersandE `a` f)
       (\f x -> f `a` x),
@@ -532,6 +538,8 @@ rules = Or [
         (\x y z -> minusE `a` (plusE `a` x `a` y) `a` z)
   ],
 
+  {-rr (flipE `a` idE)
+     (ampersandE),-}
   -- flip ($) -> &
   rr (flipE `a` dollarE)
      (ampersandE),
@@ -573,12 +581,16 @@ rules = Or [
      (\f -> flipE `a` liftM2E `a` f),
 
   -- (f .) . g --> (f .* g)
-  rr (\f g -> compE `a` f `c` g)
+  rr (\f g -> (compE `a` f) `c` g)
      (\f g -> comp2E `a` f `a` g),
 
   -- (x &) -> ($ x)
   rr (\x -> ampersandE `a` x)
      (\x -> dollarE `a` x),
+
+  -- f -.* (g . f) -> on g f
+  rr (\f g -> oedipusE `a` f `a` (compE `a` g `a` f))
+     (\f g -> onE `a` g `a` f),
 
   -- (.) -> fmap
   Hard $
@@ -592,6 +604,7 @@ rules = Or [
   Hard $
   rr (\f xs ys -> mapE `a` f `a` (zipE `a` xs `a` ys))
      (\f xs ys -> zipWithE `a` (curryE `a` f) `a` xs `a` ys),
+
   -- zipWith (,) --> zip (,)
   rr (zipWithE `a` commaE) zipE,
 
@@ -642,6 +655,11 @@ rules = Or [
   -- ap f id --> join f
   rr  (\f -> apE `a` f `a` idE)
       (\f -> joinE `a` f),
+
+  -- (. f) . g --> (f -.* g)
+  Hard $
+  rr (\f g -> (flipE `a` compE `a` f) `c` g)
+     (\f g -> oedipusE `a` f `a` g),
 
   -- (=<<) const q --> flip (>>) q
   Hard $ -- ??
