@@ -589,6 +589,7 @@ rules = Or [
      (\x -> dollarE `a` x),
 
   -- f -.* (g . f) -> on g f
+  Hard $
   rr (\f g -> oedipusE `a` f `a` (compE `a` g `a` f))
      (\f g -> onE `a` g `a` f),
 
