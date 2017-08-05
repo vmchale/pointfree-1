@@ -108,9 +108,9 @@ transformM n (Quote (Var _ ".") `MApp` e1 `MApp` e2)
 transformM n (Quote (Var _ ".*") `MApp` e1 `MApp` e2)
   | e1 `hasHole` n && not (e2 `hasHole` n)
   = flipE `a` comp2E `a` (transformM n e2) `c2` transformM n e1
-transformM n (Quote (Var _ "-.*") `MApp` e1 `MApp` e2)
+{-transformM n (Quote (Var _ "-.*") `MApp` e1 `MApp` e2)
   | e1 `hasHole` n && not (e2 `hasHole` n)
-  = flipE `a` oedipusE `a` (transformM n e2) `o` transformM n e1
+  = flipE `a` oedipusE `a` (transformM n e2) `o` transformM n e1-}
 transformM n e@(MApp e1 e2)
   | fr1 && fr2 = sE `a` transformM n e1 `a` transformM n e2
   | fr1        = flipE `a` transformM n e1 `a` e2
@@ -176,7 +176,9 @@ flipE      = Quote $ Var Pref "flip"
 constE     = Quote $ Var Pref "const"
 compE      = Quote $ Var Inf "."
 comp2E     = Quote $ Var Inf ".*"
+comp3E     = Quote $ Var Inf ".**"
 oedipusE   = Quote $ Var Inf "-.*"
+oedipus2E  = Quote $ Var Inf "-.**"
 onE        = Quote $ Var Pref "on"
 ampersandE = Quote $ Var Inf "&"
 sE         = Quote $ Var Pref "ap"
@@ -236,7 +238,9 @@ a, c, c2 :: MExpr -> MExpr -> MExpr
 a       = MApp
 c e1 e2 = compE `a` e1 `a` e2
 c2 e1 e2 = comp2E `a` e1 `a` e2
+c3 e1 e2 = comp3E `a` e1 `a` e2
 o e1 e2 = oedipusE `a` e1 `a` e2
+o2 e1 e2 = oedipus2E `a` e1 `a` e2
 infixl 9 `a`
 infixr 8 `c`
 infixr 8 `c2`
@@ -298,9 +302,15 @@ simplifies = Or [
   -- (f .* g) x y -> f (g x y)
   rr0  (\f g x y -> (f `c2` g) `a` x `a` y)
        (\f g x y -> f `a` (g `a` x `a` y)),
-  -- (f -.* g) x y -> f (g x) y
+  -- (f .** g) x y z -> f (g x y z)
+  rr0 (\f g x y z -> (f `c3` g) `a` x `a` y `a` z)
+      (\f g x y z -> f `a` (g `a` x `a` y `a` z)),
+  -- (f -.* g) x y -> f x (g y)
   rr0  (\f g x y -> (f `o` g) `a` x `a` y)
-       (\f g x y -> f `a` (g `a` x) `a` y),
+       (\f g x y -> f `a` x `a` (g `a` y)),
+  -- (f -.** g) -> f x y (g z)
+  rr0 (\f g x y z -> (f `o2` g) `a` x `a` y `a` z)
+      (\f g x y z -> f `a` x `a` y `a` (g `a` z)),
   -- x & f -> f x
   rr0 (\f x -> x `a` ampersandE `a` f)
       (\f x -> f `a` x),
@@ -580,8 +590,12 @@ rules = Or [
   rr (\f -> extE `c` flipE `a` (fmapE `c` f))
      (\f -> flipE `a` liftM2E `a` f),
 
+  -- ((f .) .) . g --> (f .** g)
+  Hard $ rr (\f g -> (compE `a` (compE `a` f)) `c` g)
+     (\f g -> (comp3E `a` f `a` g)),
+
   -- (f .) . g --> (f .* g)
-  rr (\f g -> (compE `a` f) `c` g)
+  Hard $ rr (\f g -> (compE `a` f) `c` g)
      (\f g -> comp2E `a` f `a` g),
 
   -- (x &) -> ($ x)
@@ -656,6 +670,11 @@ rules = Or [
   -- ap f id --> join f
   rr  (\f -> apE `a` f `a` idE)
       (\f -> joinE `a` f),
+
+  -- flip flip f . ((.) .* g) --> f -.** g
+  Hard $
+  rr (\f g -> (flipE `a` flipE `a` f `c` (compE `c2` g)))
+     (\f g -> oedipus2E `a` f `a` g),
 
   -- (. f) . g --> (f -.* g)
   Hard $
@@ -780,7 +799,7 @@ rules = Or [
   ] `Then` Opt (up simplifies)
 assocLOps, assocROps, assocOps :: [String]
 assocLOps = ["+", "*", "&&", "||", "max", "min"]
-assocROps = [".", "++", ".*"]
+assocROps = [".", "++", ".*", ".**"]
 assocOps  = assocLOps ++ assocROps
 
 commutativeOps :: [String]
