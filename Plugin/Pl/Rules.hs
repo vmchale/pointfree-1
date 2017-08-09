@@ -105,12 +105,6 @@ transformM n (Hole n') = if n == n' then idE else constE `a` Hole n'
 transformM n (Quote (Var _ ".") `MApp` e1 `MApp` e2)
   | e1 `hasHole` n && not (e2 `hasHole` n)
   = flipE `a` compE `a` e2 `c` transformM n e1
-transformM n (Quote (Var _ ".*") `MApp` e1 `MApp` e2)
-  | e1 `hasHole` n && not (e2 `hasHole` n)
-  = flipE `a` comp2E `a` (transformM n e2) `c2` transformM n e1
-{-transformM n (Quote (Var _ "-.*") `MApp` e1 `MApp` e2)
-  | e1 `hasHole` n && not (e2 `hasHole` n)
-  = flipE `a` oedipusE `a` (transformM n e2) `o` transformM n e1-}
 transformM n e@(MApp e1 e2)
   | fr1 && fr2 = sE `a` transformM n e1 `a` transformM n e2
   | fr1        = flipE `a` transformM n e1 `a` e2
@@ -177,6 +171,7 @@ constE     = Quote $ Var Pref "const"
 compE      = Quote $ Var Inf "."
 comp2E     = Quote $ Var Inf ".*"
 comp3E     = Quote $ Var Inf ".**"
+eyeE       = Quote $ Var Inf "-."
 oedipusE   = Quote $ Var Inf "-.*"
 oedipus2E  = Quote $ Var Inf "-.**"
 onE        = Quote $ Var Pref "on"
@@ -241,6 +236,7 @@ c2 e1 e2 = comp2E `a` e1 `a` e2
 c3 e1 e2 = comp3E `a` e1 `a` e2
 o e1 e2 = oedipusE `a` e1 `a` e2
 o2 e1 e2 = oedipus2E `a` e1 `a` e2
+eye e1 e2 = eyeE `a` e1 `a` e2
 infixl 9 `a`
 infixr 8 `c`
 infixr 8 `c2`
@@ -298,6 +294,9 @@ simplifies :: RewriteRule
 simplifies = Or [
   -- (f . g) x --> f (g x)
   rr0 (\f g x -> (f `c` g) `a` x)
+      (\f g x -> f `a` (g `a` x)),
+  -- (g -. f) -> f (g x)
+  rr0 (\f g x -> (f `eye` g) `a` x)
       (\f g x -> f `a` (g `a` x)),
   -- (f .* g) x y -> f (g x y)
   rr0  (\f g x y -> (f `c2` g) `a` x `a` y)
@@ -548,8 +547,6 @@ rules = Or [
         (\x y z -> minusE `a` (plusE `a` x `a` y) `a` z)
   ],
 
-  {-rr (flipE `a` idE)
-     (ampersandE),-}
   -- flip ($) -> &
   rr (flipE `a` dollarE)
      (ampersandE),
@@ -597,6 +594,10 @@ rules = Or [
   -- (f .) . g --> (f .* g)
   Hard $ rr (\f g -> (compE `a` f) `c` g)
      (\f g -> comp2E `a` f `a` g),
+
+  -- flip (.) -> (-.)
+  rr (flipE `a` compE)
+     (eyeE),
 
   -- (x &) -> ($ x)
   rr (\x -> ampersandE `a` x)
