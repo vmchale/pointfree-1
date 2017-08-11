@@ -224,6 +224,7 @@ zipWithE   = Quote $ Var Pref "zipWith"
 crossE     = Quote $ Var Inf  "***"
 firstE     = Quote $ Var Pref "first"
 secondE    = Quote $ Var Pref "second"
+interE     = Quote $ Var Pref "inter"
 andE       = Quote $ Var Pref "and"
 orE        = Quote $ Var Pref "or"
 allE       = Quote $ Var Pref "all"
@@ -477,8 +478,8 @@ rules = Or [
      (\x -> x),
   -- The next two are `simplifies', strictly speaking, but invoked rarely.
   -- uncurry f (x,y) --> f x y
---  rr  (\f x y -> uncurryE `a` f `a` (commaE `a` x `a` y))
---      (\f x y -> f `a` x `a` y),
+  rr  (\f x y -> uncurryE `a` f `a` (commaE `a` x `a` y))
+      (\f x y -> f `a` x `a` y),
   -- curry (uncurry f) --> f
   rr (\f -> curryE `a` (uncurryE `a` f))
      (\f -> f),
@@ -695,12 +696,16 @@ rules = Or [
 
   -- ap (f -.* ((,) . f . fst)) snd --> f (***) f
   Hard $
-  rr (\f -> apE `a` (oedipusE `a` f `a` (commaE `c` f `c` fstE)) `a` sndE)
+  rr (\f -> apE `a` (f `o` (commaE `c` f `c` fstE)) `a` sndE)
      (\f -> joinE `a` crossE `a` f),
 
+  -- flip =<< --> >>=
+  rr (flipE `a` extE)
+     (bindE),
+
   -- (`ap` snd) . (fst -.* (flip =<< (.) .* ((,) .))) --> join (***)
-  Hard $
-  rr ((flipE `a` apE `a` sndE) `c` (fstE `o` (flipE `a` extE `a` compE `c2` (flipE `a` compE `a` commaE))))
+  -- Hard $
+  rr ((flipE `a` apE `a` sndE) `c` (fstE `o` (extE `a` flipE `a` (compE `c2` (compE `a` commaE)))))
      (joinE `a` crossE),
 
   -- experimental support for Control.Arrow stuff
