@@ -215,6 +215,8 @@ subtractE  = Quote $ Var Pref "subtract"
 minusE     = Quote $ Var Inf  "-"
 liftME     = Quote $ Var Pref "liftM"
 liftM2E    = Quote $ Var Pref "liftM2"
+fishE      = Quote $ Var Inf  ">=>"
+kliesliE   = Quote $ Var Inf "<=<"
 apE        = Quote $ Var Inf  "ap"
 seqME      = Quote $ Var Inf  ">>"
 zipE       = Quote $ Var Pref "zip"
@@ -691,6 +693,15 @@ rules = Or [
   rr (\p q -> seqME `a` p `a` q)
      (\p q -> extE `a` (constE `a` q) `a` p),
 
+  -- ap (f -.* ((,) . f . fst)) snd --> f (***) f
+  Hard $
+  rr (\f -> apE `a` (oedipusE `a` f `a` (commaE `c` f `c` fstE)) `a` sndE)
+     (\f -> joinE `a` crossE `a` f),
+
+  -- (`ap` snd) . (fst -.* (flip =<< (.) .* ((,) .))) --> join (***)
+  Hard $
+  rr ((flipE `a` apE `a` sndE) `c` (fstE `o` (flipE `a` extE `a` compE `c2` (flipE `a` compE `a` commaE))))
+     (joinE `a` crossE),
 
   -- experimental support for Control.Arrow stuff
   -- (costs quite a bit of performace)

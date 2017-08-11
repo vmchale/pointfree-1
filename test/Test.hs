@@ -99,6 +99,8 @@ unitTests = TestList [
   unitTest "\\x y z -> return x >>= \\x' -> return y >>= \\y' -> return z >>= \\z' -> f x' y' z'" ["f"],
   --unitTest "let (x,y) = (1,2) in y" ["2"],
   unitTest "fix . const" ["id"],
+  unitTest "\\(x, y) -> (f x, f y)" ["f *** f"],
+  unitTest "\\f (x, y) -> (f x, f y)" ["join (***)"],
   unitTest "all f . map g" ["all (f . g)"],
   unitTest "any f . map g" ["any (f . g)"],
   unitTest "liftM2 ($)" ["ap"],
