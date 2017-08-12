@@ -699,9 +699,14 @@ rules = Or [
   rr (\f -> apE `a` (f `o` (commaE `c` f `c` fstE)) `a` sndE)
      (\f -> joinE `a` crossE `a` f),
 
-  -- flip =<< --> >>=
+  -- flip (=<<) --> >>=
   rr (flipE `a` extE)
      (bindE),
+
+  -- join . (g .* f) --> f >=> g
+  Hard $
+    rr (\f g -> joinE `c` (g `c2` f))
+       (\f g -> fishE `a` f `a` g),
 
   -- (`ap` snd) . (fst -.* (flip =<< (.) .* ((,) .))) --> join (***)
   -- Hard $

@@ -108,6 +108,7 @@ unitTests = TestList [
   unitTest "flip (-)" ["subtract"],
   --unitTest "\\xs -> [f x | x <- xs, p x]" ["map f . filter p"],
   unitTest "all id" ["and"],
+  unitTest "\\x y -> g (f x y) y" ["f >=> g"],
   unitTest "any id" ["or"],
   unitTest "flip (.)" ["(-.)"],
   unitTest "and . map f" ["all f"],
