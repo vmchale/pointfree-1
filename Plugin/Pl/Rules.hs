@@ -714,6 +714,14 @@ rules = Or [
   rr (flipE `a` extE)
      (bindE),
 
+  -- flip (>=>) --> <=<
+  rr (flipE `a` fishE)
+     (kliesliE),
+
+  -- (.) . (=<<) --> <=<
+  rr (compE `c` extE)
+     (kliesliE),
+
   -- join . (g .* f) --> f >=> g
   Hard $
     rr (\f g -> joinE `c` (g `c2` f))
