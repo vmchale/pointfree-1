@@ -229,6 +229,8 @@ andE       = Quote $ Var Pref "and"
 orE        = Quote $ Var Pref "or"
 allE       = Quote $ Var Pref "all"
 anyE       = Quote $ Var Pref "any"
+replaceE   = Quote $ Var Inf "<$"
+pointyE    = Quote $ Var Inf "$>"
 
 
 
@@ -553,6 +555,15 @@ rules = Or [
   -- flip ($) -> &
   rr (flipE `a` dollarE)
      (ampersandE),
+
+  -- fmap . const -> (<$)
+  rr (fmapE `c` constE)
+     (replaceE),
+
+  -- flip (<$) -> ($>)
+  Hard $
+  rr (flipE `a` replaceE)
+     (pointyE),
 
   Hard onceRewrites,
   -- join (fmap f x) --> f =<< x
