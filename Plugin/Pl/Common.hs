@@ -1,7 +1,7 @@
 module Plugin.Pl.Common (
         Fixity(..), Expr(..), Pattern(..), Decl(..), TopLevel(..),
-        bt, sizeExpr, mapTopLevel, mapTopLevel', getExpr,
-        operators, reservedOps, lookupOp, lookupFix, minPrec, maxPrec,
+        bt, mapTopLevel, mapTopLevel',
+        reservedOps, lookupFix, minPrec, maxPrec,
         comp, flip', id', const', scomb, cons, nil, fix', if', readM,
         makeList, getList,
         Assoc(..),
@@ -70,13 +70,6 @@ getExpr (TLD True (Define foo e)) = (Let [Define foo e] (Var Pref foo),
                                      TLD False . Define foo)
 getExpr (TLD False (Define foo e)) = (e, TLD False . Define foo)
 getExpr (TLE e)      = (e, TLE)
-
-sizeExpr :: Expr -> Int
-sizeExpr (Var _ _) = 1
-sizeExpr (App e1 e2) = sizeExpr e1 + sizeExpr e2 + 1
-sizeExpr (Lambda _ e) = 1 + sizeExpr e
-sizeExpr (Let ds e) = 1 + sum (map sizeDecl ds) + sizeExpr e where
-  sizeDecl (Define _ e') = 1 + sizeExpr e'
 
 comp, flip', id', const', scomb, cons, nil, fix', if' :: Expr
 comp   = Var Inf  "."

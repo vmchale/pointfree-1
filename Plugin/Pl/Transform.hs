@@ -10,16 +10,6 @@ import           Data.Graph                (flattenSCC, flattenSCCs,
 import qualified Data.Map                  as M
 import           Data.Maybe
 import           Plugin.Pl.Common
-import           Plugin.Pl.PrettyPrinter   ()
-
-{-
-nub :: Ord a => [a] -> [a]
-nub = nub' S.empty where
-  nub' _ [] = []
-  nub' set (x:xs)
-    | x `S.member` set = nub' set xs
-    | otherwise = x: nub' (x `S.insert` set) xs
--}
 
 occursP :: String -> Pattern -> Bool
 occursP v (PVar v')      = v == v'
