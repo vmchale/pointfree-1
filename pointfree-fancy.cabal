@@ -15,7 +15,6 @@ build-type: Simple
 extra-source-files:
     ChangeLog
     README
-    test/Test.hs
 
 source-repository head
     type: git
