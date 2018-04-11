@@ -1,6 +1,2 @@
-resolver: nightly-2017-07-31
-packages:
-- '.'
-extra-deps: []
-flags: {}
-extra-package-dbs: []
+---
+resolver: lts-11.4
