@@ -95,17 +95,17 @@ names (Var _ str)     = [str]
 -- need to include them here. Variables from lambdas used in expressions are
 -- also rewritten, but there's no reason to special-case it unless it's provably
 -- poor-performing to scan over the result in `fresh`, which I doubt it is.
-names (Lambda _ exp)  = names exp
+names (Lambda _ exp') = names exp'
 names (App exp1 exp2) = names exp1 ++ names exp2
-names (Let dlcs exp)  = (dnames =<< dlcs) ++ names exp
+names (Let dlcs exp') = (dnames =<< dlcs) ++ names exp'
   where
-    dnames (Define nm exp) = nm : names exp
+    dnames (Define nm exp'') = nm : names exp''
 
 transform' :: Expr -> Expr
-transform' exp = go exp
+transform' exp' = go exp'
   where
     -- Explicit sharing for readability
-    vars = names exp
+    vars = names exp'
 
     go Let {} =
       assert False bt

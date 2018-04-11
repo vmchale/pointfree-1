@@ -136,25 +136,11 @@ isOperator s =
       | otherwise -> False
   where
     isModule "" = False
-    isModule (c : cs) = isUpper c && all (\c -> isAlphaNum c || c `elem` ['\'', '_']) cs
-    isUnqualOp s = s /= "()" && all (\c -> isSymbol c || isPunctuation c) s
+    isModule (c : cs) = isUpper c && all (\c' -> isAlphaNum c' || c' `elem` ['\'', '_']) cs
+    isUnqualOp s' = s' /= "()" && all (\c -> isSymbol c || isPunctuation c) s'
 
 getInfName :: String -> String
 getInfName str = if isOperator str then str else "`"++str++"`"
 
 getPrefName :: String -> String
 getPrefName str = if isOperator str || ',' `elem` str then "("++str++")" else str
-
-{-
-instance Show Assoc where
-  show AssocLeft  = "AssocLeft"
-  show AssocRight = "AssocRight"
-  show AssocNone  = "AssocNone"
-
-instance Ord Assoc where
-  AssocNone <= _ = True
-  _ <= AssocNone = False
-  AssocLeft <= _ = True
-  _ <= AssocLeft = False
-  _ <= _ = True
--}
