@@ -12,16 +12,17 @@ module Plugin.Pl.Common (
         module GHC.Base
     ) where
 
-import Data.Maybe (isJust, fromJust)
-import Data.List (intersperse, minimumBy)
-import qualified Data.Map as M
+import           Data.List             (intersperse, minimumBy)
+import qualified Data.Map              as M
+import           Data.Maybe            (fromJust, fromMaybe, isJust)
 
-import Control.Monad
-import Control.Arrow (first, second, (***), (&&&), (|||), (+++))
+import           Control.Arrow         (first, second, (&&&), (***), (+++),
+                                        (|||))
+import           Control.Monad
 
-import Language.Haskell.Exts (Assoc(..))
+import           Language.Haskell.Exts (Assoc (..))
 
-import GHC.Base (assert)
+import           GHC.Base              (assert)
 
 
 -- The rewrite rules can be found at the end of the file Rules.hs
@@ -46,13 +47,13 @@ data Expr
   deriving (Eq, Ord, Show)
 
 data Pattern
-  = PVar String 
+  = PVar String
   | PCons Pattern Pattern
   | PTuple Pattern Pattern
   deriving (Eq, Ord, Show)
 
-data Decl = Define { 
-  declName :: String, 
+data Decl = Define {
+  declName :: String,
   declExpr :: Expr
 } deriving (Eq, Ord, Show)
 
@@ -62,12 +63,12 @@ mapTopLevel :: (Expr -> Expr) -> TopLevel -> TopLevel
 mapTopLevel f tl = case getExpr tl of (e, c) -> c $ f e
 
 mapTopLevel' :: Functor f => (Expr -> f Expr) -> TopLevel -> f TopLevel
-mapTopLevel' f tl = case getExpr tl of (e, c) -> fmap c $ f e
+mapTopLevel' f tl = case getExpr tl of (e, c) -> c <$> f e
 
 getExpr :: TopLevel -> (Expr, Expr -> TopLevel)
-getExpr (TLD True (Define foo e)) = (Let [Define foo e] (Var Pref foo), 
-                                     \e' -> TLD False $ Define foo e')
-getExpr (TLD False (Define foo e)) = (e, \e' -> TLD False $ Define foo e')
+getExpr (TLD True (Define foo e)) = (Let [Define foo e] (Var Pref foo),
+                                     TLD False . Define foo)
+getExpr (TLD False (Define foo e)) = (e, TLD False . Define foo)
 getExpr (TLE e)      = (e, TLE)
 
 sizeExpr :: Expr -> Int
@@ -94,7 +95,7 @@ makeList = foldr (\e1 e2 -> cons `App` e1 `App` e2) nil
 -- Modularity is a drag
 getList :: Expr -> ([Expr], Expr)
 getList (c `App` x `App` tl) | c == cons = first (x:) $ getList tl
-getList e = ([],e)
+getList e                    = ([],e)
 
 bt :: a
 bt = undefined
@@ -126,15 +127,13 @@ reservedOps :: [String]
 reservedOps = ["->", "..", "="]
 
 opFM :: M.Map String (Assoc (), Int)
-opFM = (M.fromList $ concat operators)
+opFM = M.fromList $ join operators
 
 lookupOp :: String -> Maybe (Assoc (), Int)
 lookupOp k = M.lookup k opFM
 
 lookupFix :: String -> (Assoc (), Int)
-lookupFix str = case lookupOp $ str of
-  Nothing -> ((AssocLeft ()), 9 + shift)
-  Just x  -> x
+lookupFix str = fromMaybe (AssocLeft (), 9 + shift) (lookupOp str)
 
 readM :: (Monad m, Read a) => String -> m a
 readM s = case [x | (x,t) <- reads s, ("","")  <- lex t] of

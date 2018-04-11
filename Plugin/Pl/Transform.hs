@@ -91,7 +91,7 @@ transform = transform' . alphaRename . unLet
 
 -- Infinite generator of variable names.
 varNames :: [String]
-varNames = concatMap (flip replicateM usableChars) [1..]
+varNames = flip replicateM usableChars =<< [1..]
   where
     usableChars = ['a'..'z']
 
@@ -107,7 +107,7 @@ names (Var _ str)     = [str]
 -- poor-performing to scan over the result in `fresh`, which I doubt it is.
 names (Lambda _ exp)  = names exp
 names (App exp1 exp2) = names exp1 ++ names exp2
-names (Let dlcs exp)  = concatMap dnames dlcs ++ names exp
+names (Let dlcs exp)  = (dnames =<< dlcs) ++ names exp
   where
     dnames (Define nm exp) = nm : names exp
 

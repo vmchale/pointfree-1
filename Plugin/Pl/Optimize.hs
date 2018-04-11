@@ -3,23 +3,23 @@ module Plugin.Pl.Optimize (
     optimize,
   ) where
 
-import Plugin.Pl.Common
-import Plugin.Pl.Rules
-import Plugin.Pl.PrettyPrinter (prettyExpr)
+import           Plugin.Pl.Common
+import           Plugin.Pl.PrettyPrinter (prettyExpr)
+import           Plugin.Pl.Rules
 
-import Data.List (nub)
+import           Data.List               (nub)
 
 cut :: [a] -> [a]
 cut = take 1
 
 toMonadPlus :: MonadPlus m => Maybe a -> m a
-toMonadPlus Nothing = mzero
-toMonadPlus (Just x)= return x
+toMonadPlus Nothing  = mzero
+toMonadPlus (Just x)=return x
 
 type Size = Integer
 -- This seems to be a better size for our purposes,
 -- despite being "a little" slower because of the wasteful uglyprinting
-sizeExpr' :: Expr -> Size 
+sizeExpr' :: Expr -> Size
 sizeExpr' e = 100 * fromIntegral (length $ prettyExpr e) + adjust e where
   -- hackish thing to favor some expressions if the length is the same:
   -- (+ x) --> (x +)
@@ -46,39 +46,37 @@ sizeExpr' e = 100 * fromIntegral (length $ prettyExpr e) + adjust e where
 optimize :: Expr -> [Expr]
 optimize e = result where
   result :: [Expr]
-  result = map (snd . fromJust) . takeWhile isJust . 
+  result = map (snd . fromJust) . takeWhile isJust .
     iterate ((=<<) simpleStep) $ Just (sizeExpr' e, e)
 
   simpleStep :: (Size, Expr) -> Maybe (Size, Expr)
-  simpleStep t = do 
+  simpleStep t = do
     let chn = let ?first = True in step (snd t)
         chnn = let ?first = False in step =<< chn
-        new = filter (\(x,_) -> x < fst t) . map (sizeExpr' &&& id) $ 
+        new = filter (\(x,_) -> x < fst t) . map (sizeExpr' &&& id) $
                 snd t: chn ++ chnn
     case new of
-      [] -> Nothing
+      []       -> Nothing
       (new':_) -> return new'
 
 step :: (?first :: Bool) => Expr -> [Expr]
 step e = nub $ rewrite rules e
- 
+
 rewrite :: (?first :: Bool) => RewriteRule -> Expr -> [Expr]
 rewrite rl e = case rl of
     Up r1 r2     -> let e'  = cut $ rewrite r1 e
                         e'' = rewrite r2 =<< e'
                     in if null e'' then e' else e''
     OrElse r1 r2 -> let e'  = rewrite r1 e
-                    in if null e' then rewrite r2 e else e' 
+                    in if null e' then rewrite r2 e else e'
     Then r1 r2   -> rewrite r2 =<< nub (rewrite r1 e)
     Opt  r       -> e: rewrite r e
     If   p  r    -> if null (rewrite p e) then mzero else rewrite r e
     Hard r       -> if ?first then rewrite r e else mzero
-    Or rs        -> (\x -> rewrite x e) =<< rs
+    Or rs        -> (`rewrite` e) =<< rs
     RR {}        -> rewDeep rl e
     CRR {}       -> rewDeep rl e
     Down {}      -> rewDeep rl e
-    
-  where -- rew = ...; rewDeep = ...
 
 rewDeep :: (?first :: Bool) => RewriteRule -> Expr -> [Expr]
 rewDeep rule e = rew rule e `mplus` case e of
@@ -89,16 +87,16 @@ rewDeep rule e = rew rule e `mplus` case e of
                   ((e1 `App`) `map` rewDeep rule e2)
 
 rew :: (?first :: Bool) => RewriteRule -> Expr -> [Expr]
-rew (RR r1 r2) e = toMonadPlus $ fire r1 r2 e 
+rew (RR r1 r2) e = toMonadPlus $ fire r1 r2 e
 rew (CRR r) e = toMonadPlus $ r e
-rew (Or rs) e = (\x -> rew x e) =<< rs
+rew (Or rs) e = (`rew` e) =<< rs
 rew (Down r1 r2) e
   = if null e'' then e' else e'' where
     e'  = cut $ rew r1 e
     e'' = rewDeep r2 =<< e'
-rew r@(Then   {}) e = rewrite r e
-rew r@(OrElse {}) e = rewrite r e
-rew r@(Up     {}) e = rewrite r e
-rew r@(Opt    {}) e = rewrite r e
-rew r@(If     {}) e = rewrite r e
-rew r@(Hard   {}) e = rewrite r e
+rew r@Then   {} e = rewrite r e
+rew r@OrElse {} e = rewrite r e
+rew r@Up     {} e = rewrite r e
+rew r@Opt    {} e = rewrite r e
+rew r@If     {} e = rewrite r e
+rew r@Hard   {} e = rewrite r e

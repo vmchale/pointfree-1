@@ -1,9 +1,6 @@
 ---
 - functions:
   - {name: unsafePerformIO, within: []}  # unsafePerformIO can appear nowhere
-  - {name: undefined, within: []}
-  - {name: fromJust, within: []}  # this is hell to track down
-  - {name: foldl, within: []}  # foldl has bad properties
 - error: {lhs: "hylo embed", rhs: "ana", name: "Use anamorphism"}
 - error: {lhs: "hylo f project", rhs: "cata f", name: "Use catamorphism"}
 - error: {lhs: "do { x <- y ; pure (f x) }", rhs: "f =<< y", name: "Avoid do-notation"}
