@@ -71,7 +71,7 @@ test-suite tests
         array >=0.3 && <0.6,
         base <5,
         containers >=0.3 && <0.6,
-        haskell-src-exts >=1.18 && <1.20,
+        haskell-src-exts >=1.18 && <1.21,
         HUnit >=1.1 && <1.7,
         QuickCheck >=2.1 && <2.11,
         transformers <0.6
