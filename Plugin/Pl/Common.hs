@@ -1,7 +1,7 @@
 module Plugin.Pl.Common (
         Fixity(..), Expr(..), Pattern(..), Decl(..), TopLevel(..),
         bt, mapTopLevel, mapTopLevel',
-        reservedOps, lookupFix, minPrec, maxPrec,
+        lookupFix, minPrec, maxPrec,
         comp, flip', id', const', scomb, cons, nil, fix', if', readM,
         makeList, getList,
         Assoc(..),
@@ -115,9 +115,6 @@ operators = (map . map . second . second $ (+shift))
    [inf name (AssocRight ()) 0 | name <- ["$", "$!", "`seq`"]]
   ] where
   inf name assoc fx = (name, (assoc, fx))
-
-reservedOps :: [String]
-reservedOps = ["->", "..", "="]
 
 opFM :: M.Map String (Assoc (), Int)
 opFM = M.fromList $ join operators
