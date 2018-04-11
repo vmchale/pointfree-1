@@ -224,7 +224,6 @@ zipWithE   = Quote $ Var Pref "zipWith"
 crossE     = Quote $ Var Inf  "***"
 firstE     = Quote $ Var Pref "first"
 secondE    = Quote $ Var Pref "second"
-interE     = Quote $ Var Pref "inter"
 andE       = Quote $ Var Pref "and"
 orE        = Quote $ Var Pref "or"
 allE       = Quote $ Var Pref "all"
@@ -317,37 +316,37 @@ simplifies = Or [
       (\f g x y z -> f `a` x `a` y `a` (g `a` z)),
   -- x & f -> f x
   rr0 (\f x -> x `a` ampersandE `a` f)
-      (\f x -> f `a` x),
+      a,
   -- id x --> x
   rr0 (\x -> idE `a` x)
-      (\x -> x),
+      id,
   -- flip (flip x) --> x
   rr  (\x -> flipE `a` (flipE `a` x))
-      (\x -> x),
+      id,
   -- flip id x . f --> flip f x
   rr0 (\f x -> (flipE `a` idE `a` x) `c` f)
       (\f x -> flipE `a` f `a` x),
   -- id . f --> f
   rr0 (\f -> idE `c` f)
-      (\f -> f),
+      id,
   -- f . id --> f
-  rr0 (\f -> f `c` idE)
-      (\f -> f),
+  rr0 (`c` idE)
+      id,
   -- const x y --> x
   rr0 (\x y -> constE `a` x `a` y)
-      (\x _ -> x),
+      const,
   -- not (not x) --> x
   rr  (\x -> notE `a` (notE `a` x))
-      (\x -> x),
+      id,
   -- fst (x,y) --> x
   rr  (\x y -> fstE `a` (commaE `a` x `a` y))
-      (\x _ -> x),
+      const,
   -- snd (x,y) --> y
   rr  (\x y -> sndE `a` (commaE `a` x `a` y))
       (\_ y -> y),
   -- head (x:xs) --> x
   rr  (\x xs -> headE `a` (consE `a` x `a` xs))
-      (\x _  -> x),
+      const,
   -- tail (x:xs) --> xs
   rr  (\x xs -> tailE `a` (consE `a` x `a` xs))
       (\_ xs -> xs),
@@ -356,12 +355,12 @@ simplifies = Or [
       (\f x y -> f `a` x `a` y),
   -- uncurry (,) --> id
   rr  (uncurryE `a` commaE)
-      (idE),
+      idE,
   -- uncurry f . s (,) g --> s f g
   rr1 (\f g -> (uncurryE `a` f) `c` (sE `a` commaE `a` g))
       (\f g -> sE `a` f `a` g),
   -- curry fst --> const
-  rr (curryE `a` fstE) (constE),
+  rr (curryE `a` fstE) constE,
   -- curry snd --> const id
   rr (curryE `a` sndE) (constE `a` idE),
   -- s f g x --> f x (g x)
@@ -377,10 +376,10 @@ simplifies = Or [
   -- TODO: Think about map/fmap
   -- fmap id --> id
   rr (fmapE `a` idE)
-     (idE),
+     idE,
   -- map id --> id
   rr (mapE `a` idE)
-     (idE),
+     idE,
   -- (f . g) . h --> f . (g . h)
   rr0 (\f g h -> (f `c` g) `c` h)
       (\f g h -> f `c` (g `c` h)),
@@ -396,7 +395,7 @@ simplifies = Or [
 onceRewrites :: RewriteRule
 onceRewrites = Hard $ Or [
   -- ($) --> id
-  rr0 (dollarE)
+  rr0 dollarE
       idE,
   -- concatMap --> (=<<)
   rr concatMapE extE,
@@ -436,7 +435,7 @@ rules = Or [
       idE,
   -- (=<<) f (return x) -> f x
   rr  (\f x -> extE `a` f `a` (returnE `a` x))
-      (\f x -> f `a` x),
+      a,
   -- (=<<) ((=<<) f . g) --> (=<<) f . (=<<) g
   rr  (\f g -> extE `a` ((extE `a` f) `c` g))
       (\f g -> (extE `a` f) `c` (extE `a` g)),
@@ -465,7 +464,7 @@ rules = Or [
       (\_ y -> y),
   -- s (const . f) g --> f
   rr1 (\f g -> sE `a` (constE `c` f) `a` g)
-      (\f _ -> f),
+      const,
   -- s (const f) --> (.) f
   rr  (\f -> sE `a` (constE `a` f))
       (\f -> compE `a` f),
@@ -474,20 +473,20 @@ rules = Or [
       (\f -> uncurryE `a` f),
   -- fst (join (,) x) --> x
   rr (\x -> fstE `a` (joinE `a` commaE `a` x))
-     (\x -> x),
+     id,
   -- snd (join (,) x) --> x
   rr (\x -> sndE `a` (joinE `a` commaE `a` x))
-     (\x -> x),
+     id,
   -- The next two are `simplifies', strictly speaking, but invoked rarely.
   -- uncurry f (x,y) --> f x y
   rr  (\f x y -> uncurryE `a` f `a` (commaE `a` x `a` y))
       (\f x y -> f `a` x `a` y),
   -- curry (uncurry f) --> f
   rr (\f -> curryE `a` (uncurryE `a` f))
-     (\f -> f),
+     id,
   -- uncurry (curry f) --> f
   rr (\f -> uncurryE `a` (curryE `a` f))
-     (\f -> f),
+     id,
   -- (const id . f) --> const id
   rr  (\f -> (constE `a` idE) `c` f)
       (\_ -> constE `a` idE),
@@ -508,10 +507,10 @@ rules = Or [
       (\f -> f `a` (f `a` (fixE `a` f))),
   -- fix (const f) --> f
   rr (\f -> fixE `a` (constE `a` f))
-     (\f -> f),
+     id,
   -- flip const x --> id
   rr  (\x -> flipE `a` constE `a` x)
-      (\_ -> idE),
+      (pure idE),
   -- const . f --> flip (const f)
   Hard $
   rr  (\f -> constE `c` f)
@@ -525,16 +524,16 @@ rules = Or [
   If (Or [rr plusE plusE, rr minusE minusE, rr multE multE]) $ down $ Or [
     -- 0 + x --> x
     rr  (\x -> plusE `a` zeroE `a` x)
-        (\x -> x),
+        id,
     -- 0 * x --> 0
     rr  (\x -> multE `a` zeroE `a` x)
-        (\_ -> zeroE),
+        (pure zeroE),
     -- 1 * x --> x
     rr  (\x -> multE `a` oneE `a` x)
-        (\x -> x),
+        id,
     -- x - x --> 0
     rr  (\x -> minusE `a` x `a` x)
-        (\_ -> zeroE),
+        (pure zeroE),
     -- x - y + y --> x
     rr  (\y x -> plusE `a` (minusE `a` x `a` y) `a` y)
         (\_ x -> x),
@@ -554,16 +553,16 @@ rules = Or [
 
   -- flip ($) -> &
   rr (flipE `a` dollarE)
-     (ampersandE),
+     ampersandE,
 
   -- fmap . const -> (<$)
   rr (fmapE `c` constE)
-     (replaceE),
+     replaceE,
 
   -- flip (<$) -> ($>)
   Hard $
   rr (flipE `a` replaceE)
-     (pointyE),
+     pointyE,
 
   Hard onceRewrites,
   -- join (fmap f x) --> f =<< x
@@ -576,7 +575,7 @@ rules = Or [
   rr joinE (extE `a` idE),
   -- join (return x) --> x
   rr (\x -> joinE `a` (returnE `a` x))
-     (\x -> x),
+     id,
   -- (return . f) =<< m --> fmap f m
   rr (\f m -> extE `a` (returnE `c` f) `a` m)
      (\f m -> fmapIE `a` f `a` m),
@@ -611,7 +610,7 @@ rules = Or [
 
   -- flip (.) -> (-.)
   rr (flipE `a` compE)
-     (eyeE),
+     eyeE,
 
   -- (x &) -> ($ x)
   rr (\x -> ampersandE `a` x)
@@ -678,7 +677,7 @@ rules = Or [
       (\f g x -> f `a` (g `a` x)),
   -- return x y --> y
   rr  (\y x -> returnE `a` x `a` y)
-      (\y _ -> y),
+      const,
   -- liftM2 f g h x --> g x `h` h x
   rr0 (\f g h x -> liftM2E `a` f `a` g `a` h `a` x)
       (\f g h x -> f `a` (g `a` x) `a` (h `a` x)),
@@ -712,15 +711,15 @@ rules = Or [
 
   -- flip (=<<) --> >>=
   rr (flipE `a` extE)
-     (bindE),
+     bindE,
 
   -- flip (>=>) --> <=<
   rr (flipE `a` fishE)
-     (kliesliE),
+     kliesliE,
 
   -- (.) . (=<<) --> <=<
   rr (compE `c` extE)
-     (kliesliE),
+     kliesliE,
 
   -- join . (g .* f) --> f >=> g
   Hard $
@@ -746,13 +745,13 @@ rules = Or [
   -- I think we need all three of them:
   -- uncurry (const f) --> f . snd
   rr (\f -> uncurryE `a` (constE `a` f))
-     (\f -> f `c` sndE),
+     (`c` sndE),
   -- uncurry const --> fst
   rr (uncurryE `a` constE)
-     (fstE),
+     fstE,
   -- uncurry (const . f) --> f . fst
   rr (\f -> uncurryE `a` (constE `c` f))
-     (\f -> f `c` fstE),
+     (`c` fstE),
 
   -- TODO is this the right place?
   -- [x] --> return x
@@ -780,10 +779,10 @@ rules = Or [
          (\f x xs -> consE `a` (f `a` x) `a` (fmapE `a` f `a` xs)),
       -- map f []     --> []
       rr (\f -> mapE `a` f `a` nilE)
-         (\_ -> nilE),
+         (pure nilE),
       -- fmap f []     --> []
       rr (\f -> fmapE `a` f `a` nilE)
-         (\_ -> nilE)
+         (pure nilE)
     ],
     -- foldr elimination
     down $ Or [
@@ -828,7 +827,7 @@ rules = Or [
   ],
 
   -- Complicated Transformations
-  CRR (collapseLists),
+  CRR collapseLists,
   up $ Or [CRR (evalUnary unaryBuiltins), CRR (evalBinary binaryBuiltins)],
   up $ CRR (assoc assocOps),
   up $ CRR (assocL assocOps),
@@ -836,7 +835,7 @@ rules = Or [
   Up (CRR (commutative commutativeOps)) $ down $ Or [CRR $ assocL assocLOps,
                                                      CRR $ assocR assocROps],
 
-  Hard $ simplifies
+  Hard simplifies
   ] `Then` Opt (up simplifies)
 assocLOps, assocROps, assocOps :: [String]
 assocLOps = ["+", "*", "&&", "||", "max", "min"]

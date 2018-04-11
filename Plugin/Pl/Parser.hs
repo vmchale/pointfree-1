@@ -1,27 +1,28 @@
 module Plugin.Pl.Parser (parsePF) where
 
-import Plugin.Pl.Common
+import           Plugin.Pl.Common
 
 import qualified Language.Haskell.Exts as HSE
 
 todo :: (Functor e, Show (e ())) => e a -> r
-todo thing = error ("pointfree: not supported: " ++ show (fmap (const ()) thing))
+todo thing = error ("pointfree: not supported: " ++ show (void thing))
 
 nameString :: HSE.Name a -> (Fixity, String)
-nameString (HSE.Ident _ s) = (Pref, s)
+nameString (HSE.Ident _ s)  = (Pref, s)
 nameString (HSE.Symbol _ s) = (Inf, s)
 
 qnameString :: HSE.QName a -> (Fixity, String)
 qnameString (HSE.Qual _ m n) = fmap ((HSE.prettyPrint m ++ ".") ++) (nameString n)
 qnameString (HSE.UnQual _ n) = nameString n
 qnameString (HSE.Special _ sc) = case sc of
-  HSE.UnitCon _ -> (Pref, "()")
-  HSE.ListCon _ -> (Pref, "[]")
-  HSE.FunCon _ -> (Inf, "->")
+  HSE.UnitCon _              -> (Pref, "()")
+  HSE.ListCon _              -> (Pref, "[]")
+  HSE.FunCon _               -> (Inf, "->")
   HSE.TupleCon _ HSE.Boxed n -> (Inf, replicate (n-1) ',')
-  HSE.TupleCon{} -> todo sc
-  HSE.Cons _ -> (Inf, ":")
-  HSE.UnboxedSingleCon{} -> todo sc
+  HSE.TupleCon{}             -> todo sc
+  HSE.Cons _                 -> (Inf, ":")
+  HSE.UnboxedSingleCon{}     -> todo sc
+  HSE.ExprHole{}             -> todo sc
 
 opString :: HSE.QOp a -> (Fixity, String)
 opString (HSE.QVarOp _ qn) = qnameString qn
@@ -37,13 +38,13 @@ hseToExpr expr = case expr of
   HSE.Con _ qn -> uncurry Var (qnameString qn)
   HSE.Lit _ l -> case l of
     HSE.String _ _ s -> list (map (Var Pref . show) s)
-    _ -> Var Pref (HSE.prettyPrint l)
+    _                -> Var Pref (HSE.prettyPrint l)
   HSE.InfixApp _ p op q -> apps (Var Inf (snd (opString op))) [p,q]
   HSE.App _ f x -> hseToExpr f `App` hseToExpr x
   HSE.NegApp _ e -> Var Pref "negate" `App` hseToExpr e
   HSE.Lambda _ ps e -> foldr (Lambda . hseToPattern) (hseToExpr e) ps
   HSE.Let _ bs e -> case bs of
-    HSE.BDecls _ ds -> Let (map hseToDecl ds) (hseToExpr e)
+    HSE.BDecls _ ds   -> Let (map hseToDecl ds) (hseToExpr e)
     HSE.IPBinds _ ips -> todo ips
   HSE.If _ b t f -> apps if' [b,t,f]
   HSE.Case{} -> todo expr
@@ -64,7 +65,7 @@ hseToExpr expr = case expr of
   _ -> todo expr
 
 apps :: Expr -> [HSE.Exp a] -> Expr
-apps f xs = foldl (\a x -> a `App` hseToExpr x) f xs 
+apps = foldl (\a x -> a `App` hseToExpr x)
 
 hseToDecl :: HSE.Decl a -> Decl
 hseToDecl dec = case dec of
@@ -87,5 +88,5 @@ parsePF :: String -> Either String TopLevel
 parsePF inp = case HSE.parseExp inp of
   HSE.ParseOk e -> Right (TLE (hseToExpr e))
   HSE.ParseFailed _ _ -> case HSE.parseDecl inp of
-    HSE.ParseOk d -> Right (TLD True (hseToDecl d))
+    HSE.ParseOk d         -> Right (TLD True (hseToDecl d))
     HSE.ParseFailed _ err -> Left err
