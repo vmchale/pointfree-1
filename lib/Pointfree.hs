@@ -1,12 +1,11 @@
 module Pointfree where
 
-import Plugin.Pl.Common (mapTopLevel, mapTopLevel')
-import Plugin.Pl.Optimize (optimize)
-import Plugin.Pl.Parser (parsePF)
-import Plugin.Pl.PrettyPrinter (prettyTopLevel)
-import Plugin.Pl.Transform (transform)
-
-import Data.Maybe (listToMaybe)
+import           Data.Maybe              (listToMaybe)
+import           Plugin.Pl.Common        (mapTopLevel, mapTopLevel')
+import           Plugin.Pl.Optimize      (optimize)
+import           Plugin.Pl.Parser        (parsePF)
+import           Plugin.Pl.PrettyPrinter (prettyTopLevel)
+import           Plugin.Pl.Transform     (transform)
 
 {- |
   >>> pointfree "I'm not a valid Haskell expression!"
@@ -17,7 +16,7 @@ import Data.Maybe (listToMaybe)
 pointfree :: String -> [String]
 pointfree
   = either
-    (const [])
+    (pure [])
     (map prettyTopLevel . mapTopLevel' optimize . mapTopLevel transform)
   . parsePF
 

@@ -12,17 +12,14 @@ module Plugin.Pl.Common (
         module GHC.Base
     ) where
 
-import           Data.List             (intersperse, minimumBy)
-import qualified Data.Map              as M
-import           Data.Maybe            (fromJust, fromMaybe, isJust)
-
 import           Control.Arrow         (first, second, (&&&), (***), (+++),
                                         (|||))
 import           Control.Monad
-
-import           Language.Haskell.Exts (Assoc (..))
-
+import           Data.List             (intersperse, minimumBy)
+import qualified Data.Map              as M
+import           Data.Maybe            (fromJust, fromMaybe, isJust)
 import           GHC.Base              (assert)
+import           Language.Haskell.Exts (Assoc (..))
 
 
 -- The rewrite rules can be found at the end of the file Rules.hs
