@@ -165,7 +165,7 @@ idE, flipE, bindE, extE, pureE, consE, appendE, nilE, foldrE, foldlE, fstE,
   fixE, foldl1E, notE, equalsE, nequalsE, plusE, multE, zeroE, oneE, lengthE,
   sumE, productE, concatE, concatMapE, joinE, mapE, fmapE, fmapIE, subtractE,
   minusE, liftME, apE, liftM2E, seqME, zipE, zipWithE, onE, oedipusE, comp2E,
-  crossE, firstE, secondE, andE, orE, allE, anyE :: MExpr
+  crossE, firstE, secondE, andE, orE, allE, anyE, returnE :: MExpr
 idE        = Quote $ Var Pref "id"
 flipE      = Quote $ Var Pref "flip"
 constE     = Quote $ Var Pref "const"
@@ -182,6 +182,7 @@ fixE       = Quote $ Var Pref "fix"
 bindE      = Quote $ Var Inf  ">>="
 extE       = Quote $ Var Inf  "=<<"
 pureE      = Quote $ Var Pref "pure"
+returnE    = Quote $ Var Pref "return"
 consE      = Quote $ Var Inf  ":"
 nilE       = Quote $ Var Pref "[]"
 appendE    = Quote $ Var Inf  "++"
@@ -432,10 +433,10 @@ rules = Or [
   rr  (\x -> appendE `a` (consE `a` x `a` nilE))
       (\x -> consE `a` x),
   -- (=<<) return --> id
-  rr  (extE `a` pureE)
+  rr  (extE `a` returnE)
       idE,
   -- (=<<) f (return x) -> f x
-  rr  (\f x -> extE `a` f `a` (pureE `a` x))
+  rr  (\f x -> extE `a` f `a` (returnE `a` x))
       a,
   -- (=<<) ((=<<) f . g) --> (=<<) f . (=<<) g
   rr  (\f g -> extE `a` ((extE `a` f) `c` g))
@@ -575,27 +576,27 @@ rules = Or [
   Hard $
   rr joinE (extE `a` idE),
   -- join (return x) --> x
-  rr (\x -> joinE `a` (pureE `a` x))
+  rr (\x -> joinE `a` (returnE `a` x))
      id,
   -- (return . f) =<< m --> fmap f m
-  rr (\f m -> extE `a` (pureE `c` f) `a` m)
+  rr (\f m -> extE `a` (returnE `c` f) `a` m)
      (\f m -> fmapIE `a` f `a` m),
   -- (x >>=) . (return .) . f  --> flip (fmap . f) x
-  rr (\f x -> bindE `a` x `c` (compE `a` pureE) `c` f)
+  rr (\f x -> bindE `a` x `c` (compE `a` returnE) `c` f)
      (\f x -> flipE `a` (fmapIE `c` f) `a` x),
   -- (>>=) (return f) --> flip id f
-  rr (\f -> bindE `a` (pureE `a` f))
+  rr (\f -> bindE `a` (returnE `a` f))
      (\f -> flipE `a` idE `a` f),
   -- liftM2 f x --> ap (f `fmap` x)
   Hard $
   rr (\f x -> liftM2E `a` f `a` x)
      (\f x -> apE `a` (fmapIE `a` f `a` x)),
   -- liftM2 f (return x) --> fmap (f x)
-  rr (\f x -> liftM2E `a` f `a` (pureE `a` x))
+  rr (\f x -> liftM2E `a` f `a` (returnE `a` x))
      (\f x -> fmapIE `a` (f `a` x)),
   -- f `fmap` return x --> return (f x)
-  rr (\f x -> fmapE `a` f `a` (pureE `a` x))
-     (\f x -> pureE `a` (f `a` x)),
+  rr (\f x -> fmapE `a` f `a` (returnE `a` x))
+     (\f x -> returnE `a` (f `a` x)),
   -- (=<<) . flip (fmap . f) --> flip liftM2 f
   Hard $
   rr (\f -> extE `c` flipE `a` (fmapE `c` f))
@@ -654,7 +655,7 @@ rules = Or [
      (\f -> anyE `a` f),
 
   -- return f `ap` x --> fmap f x
-  rr (\f x -> apE `a` (pureE `a` f) `a` x)
+  rr (\f x -> apE `a` (returnE `a` f) `a` x)
      (\f x -> fmapIE `a` f `a` x),
   -- ap (f `fmap` x) --> liftM2 f x
   rr (\f x -> apE `a` (fmapIE `a` f `a` x))
@@ -677,7 +678,7 @@ rules = Or [
   rr0 (\f g x -> fmapE `a` f `a` g `a` x)
       (\f g x -> f `a` (g `a` x)),
   -- return x y --> y
-  rr  (\y x -> pureE `a` x `a` y)
+  rr  (\y x -> returnE `a` x `a` y)
       const,
   -- liftM2 f g h x --> g x `h` h x
   rr0 (\f g h x -> liftM2E `a` f `a` g `a` h `a` x)
@@ -758,7 +759,7 @@ rules = Or [
   -- [x] --> return x
   Hard $
   rr (\x -> consE `a` x `a` nilE)
-     (\x -> pureE `a` x),
+     (\x -> returnE `a` x),
   -- list destructors
   Hard $
   If (Or [rr consE consE, rr nilE nilE]) $ Or [
@@ -813,7 +814,7 @@ rules = Or [
          (\_ z -> z),
       -- special rule:
       -- foldl f z [x] --> f z x
-      rr (\f z x -> foldlE `a` f `a` z `a` (pureE `a` x))
+      rr (\f z x -> foldlE `a` f `a` z `a` (returnE `a` x))
          (\f z x -> f `a` z `a` x),
       rr (\f z x -> foldlE `a` f `a` z `a` (consE `a` x `a` nilE))
          (\f z x -> f `a` z `a` x)

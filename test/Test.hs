@@ -110,6 +110,7 @@ unitTests = TestList [
   unitTest "\\x y -> g (f x y) y" ["f >=> g"],
   unitTest "any id" ["or"],
   unitTest "flip (.)" ["(<&>)"],
+  unitTest "flip ($)" ["(&)"],
   unitTest "flip (<$)" ["($>)"],
   unitTest "fmap . const" ["(<$)"],
   unitTest "(.) . const" ["(<$)"],
@@ -202,7 +203,7 @@ unitTests = TestList [
   unitTest "(concat .) . map" ["(=<<)"],
   unitTest "let f ((a,b),(c,d)) = a + b + c + d in f ((1,2),(3,4))" ["10"],
   unitTest "let x = const 3 y; y = const 4 x in x + y" ["7"], -- yay!
-  unitTest "(\\n -> (return 0) ± (return $ sqrt n))" ["(return 0 ±) . return . sqrt"],
+  unitTest "(\\n -> (pure 0) ± (pure $ sqrt n))" ["(pure 0 ±) . pure . sqrt"],
   unitTest "\\b -> (\\c -> ((Control.Monad.>>=) c) (\\g -> Control.Applicative.pure (b g)))"
     ["flip (Control.Monad.>>=) . (Control.Applicative.pure .)"],
   unitTest "\\(x, y) -> z" ["const z"],
