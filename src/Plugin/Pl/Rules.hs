@@ -172,7 +172,7 @@ constE     = Quote $ Var Pref "const"
 compE      = Quote $ Var Inf "."
 comp2E     = Quote $ Var Inf ".*"
 comp3E     = Quote $ Var Inf ".**"
-eyeE       = Quote $ Var Inf "-."
+eyeE       = Quote $ Var Inf "<&>"
 oedipusE   = Quote $ Var Inf "-.*"
 oedipus2E  = Quote $ Var Inf "-.**"
 onE        = Quote $ Var Pref "on"
@@ -609,7 +609,7 @@ rules = Or [
   Hard $ rr (\f g -> (compE `a` f) `c` g)
      (\f g -> comp2E `a` f `a` g),
 
-  -- flip (.) -> (-.)
+  -- flip (.) -> (<&>)
   rr (flipE `a` compE)
      eyeE,
 

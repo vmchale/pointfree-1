@@ -109,7 +109,7 @@ unitTests = TestList [
   unitTest "all id" ["and"],
   unitTest "\\x y -> g (f x y) y" ["f >=> g"],
   unitTest "any id" ["or"],
-  unitTest "flip (.)" ["(-.)"],
+  unitTest "flip (.)" ["(<&>)"],
   unitTest "flip (<$)" ["($>)"],
   unitTest "fmap . const" ["(<$)"],
   unitTest "(.) . const" ["(<$)"],
