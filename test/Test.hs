@@ -179,6 +179,7 @@ unitTests = TestList [
   unitTest "\\x y -> f x == f y" [ "on (==) f" ],
   unitTest "(+2).(+3).(+4)" ["(9 +)"],
   unitTest "head $ fix (x:)" ["x"],
+  unitTest "\\f -> g . f . h" ["g ~@~ h"],
   unitTest "head $ tail $ let xs = x:ys; ys = y:ys in xs" ["y"],
   unitTest "head $ tail $ let ys = y:ys in let xs = x:ys in xs" ["y"],
   unitTest "2+3*4-3*3" ["5"],
