@@ -160,7 +160,7 @@ down = fix . Down
 up   = fix . Up
 
 
-idE, flipE, bindE, extE, pureE, consE, appendE, nilE, foldrE, foldlE, fstE,
+idE, flipE, bindE, extE, consE, appendE, nilE, foldrE, foldlE, fstE,
   sndE, dollarE, constE, uncurryE, curryE, compE, headE, tailE, sE, commaE,
   fixE, foldl1E, notE, equalsE, nequalsE, plusE, multE, zeroE, oneE, lengthE,
   sumE, productE, concatE, concatMapE, joinE, mapE, fmapE, fmapIE, subtractE,
@@ -181,7 +181,6 @@ sE         = Quote $ Var Pref "ap"
 fixE       = Quote $ Var Pref "fix"
 bindE      = Quote $ Var Inf  ">>="
 extE       = Quote $ Var Inf  "=<<"
-pureE      = Quote $ Var Pref "pure"
 returnE    = Quote $ Var Pref "return"
 consE      = Quote $ Var Inf  ":"
 nilE       = Quote $ Var Pref "[]"
