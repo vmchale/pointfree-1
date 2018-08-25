@@ -142,7 +142,7 @@ unitTests = TestList [
   unitTest "return 1 x" ["x"],
   unitTest "f =<< return x" ["f x"],
   unitTest "(=<<) id" ["join"],
-  unitTest "\\x y z -> f (g x y z) z" ["<=*<"],
+  unitTest "\\x y z -> f (g x y z) z" ["f <=*< g"],
   unitTest "zipWith (,)" ["zip"],
   unitTest "map fst . zip [1..]" ["zipWith const [1..]"],
   unitTest "curry . uncurry" ["id"],
