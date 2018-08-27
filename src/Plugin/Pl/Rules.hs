@@ -165,7 +165,8 @@ idE, flipE, bindE, extE, consE, appendE, nilE, foldrE, foldlE, fstE,
   fixE, foldl1E, notE, equalsE, nequalsE, plusE, multE, zeroE, oneE, lengthE,
   sumE, productE, concatE, concatMapE, joinE, mapE, fmapE, fmapIE, subtractE,
   minusE, liftME, apE, liftM2E, seqME, zipE, zipWithE, onE, oedipusE, comp2E,
-  crossE, firstE, secondE, andE, orE, allE, anyE, returnE, fishE, mfishE :: MExpr
+  crossE, firstE, secondE, andE, orE, allE, anyE, returnE, fishE, mfishE,
+  needleE :: MExpr
 idE        = Quote $ Var Pref "id"
 flipE      = Quote $ Var Pref "flip"
 constE     = Quote $ Var Pref "const"
@@ -232,8 +233,7 @@ anyE       = Quote $ Var Pref "any"
 replaceE   = Quote $ Var Inf "<$"
 pointyE    = Quote $ Var Inf "$>"
 mfishE     = Quote $ Var Inf "<=*<"
-
-
+needleE    = Quote $ Var Inf "~@~"
 
 a, c, c2 :: MExpr -> MExpr -> MExpr
 a       = MApp
@@ -613,6 +613,10 @@ rules = Or [
   -- flip (.) -> (<&>)
   rr (flipE `a` compE)
      eyeE,
+
+  -- (<&>) -.* (.*) -> (~@~)
+  rr (\f g -> (oedipusE `a` eyeE `a` comp2E) `a` f `a` g)
+     (\f g -> needleE `a` f `a` g),
 
   -- (x &) -> ($ x)
   rr (\x -> ampersandE `a` x)
