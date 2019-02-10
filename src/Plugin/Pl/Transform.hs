@@ -1,8 +1,6 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE PatternGuards     #-}
-module Plugin.Pl.Transform (
-    transform,
-  ) where
+{-# LANGUAGE PatternGuards #-}
+
+module Plugin.Pl.Transform ( transform ) where
 
 import           Control.Monad.Trans.State
 import           Data.Graph                (flattenSCC, flattenSCCs,

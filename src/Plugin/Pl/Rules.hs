@@ -249,7 +249,6 @@ infixr 8 `c`
 infixr 8 `c2`
 infixr 8 `o`
 
-
 collapseLists :: Expr -> Maybe Expr
 collapseLists (Var _ "++" `App` e1 `App` e2)
   | (xs,x) <- getList e1, x==nil,
