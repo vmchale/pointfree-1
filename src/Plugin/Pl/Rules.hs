@@ -164,7 +164,7 @@ idE, flipE, bindE, extE, consE, appendE, nilE, foldrE, foldlE, fstE,
   sndE, dollarE, constE, uncurryE, curryE, compE, headE, tailE, sE, commaE,
   fixE, foldl1E, notE, equalsE, nequalsE, plusE, multE, zeroE, oneE, lengthE,
   sumE, productE, concatE, concatMapE, joinE, mapE, fmapE, fmapIE, subtractE,
-  minusE, liftME, apE, liftM2E, seqME, zipE, zipWithE, onE, oedipusE, comp2E,
+  minusE, liftME, apE, liftM2E, seqME, zipE, zipWithE, onE, oedipusE, oedipus2E, comp2E,
   crossE, firstE, secondE, andE, orE, allE, anyE, returnE, fishE, mfishE,
   needleE, mneedleE :: MExpr
 idE        = Quote $ Var Pref "id"
@@ -174,8 +174,8 @@ compE      = Quote $ Var Inf "."
 comp2E     = Quote $ Var Inf ".*"
 comp3E     = Quote $ Var Inf ".**"
 eyeE       = Quote $ Var Inf "<&>"
-oedipusE   = Quote $ Var Inf "-.*"
-oedipus2E  = Quote $ Var Inf "-.**"
+oedipusE   = Quote $ Var Inf ".@"
+oedipus2E  = Quote $ Var Inf ".@@"
 onE        = Quote $ Var Pref "on"
 ampersandE = Quote $ Var Inf "&"
 sE         = Quote $ Var Pref "ap"
@@ -310,10 +310,10 @@ simplifies = Or [
   -- (f .** g) x y z -> f (g x y z)
   rr0 (\f g x y z -> (f `c3` g) `a` x `a` y `a` z)
       (\f g x y z -> f `a` (g `a` x `a` y `a` z)),
-  -- (f -.* g) x y -> f x (g y)
+  -- (f .@ g) x y -> f x (g y)
   rr0  (\f g x y -> (f `o` g) `a` x `a` y)
        (\f g x y -> f `a` x `a` (g `a` y)),
-  -- (f -.** g) -> f x y (g z)
+  -- (f .@@ g) -> f x y (g z)
   rr0 (\f g x y z -> (f `o2` g) `a` x `a` y `a` z)
       (\f g x y z -> f `a` x `a` y `a` (g `a` z)),
   -- x & f -> f x
@@ -614,7 +614,7 @@ rules = Or [
   rr (flipE `a` compE)
      eyeE,
 
-  -- (<&>) -.* (.*) -> (~@~)
+  -- (<&>) .@ (.*) -> (~@~)
   rr (\f g -> (oedipusE `a` eyeE `a` comp2E) `a` f `a` g)
      (\f g -> needleE `a` f `a` g),
 
@@ -626,7 +626,7 @@ rules = Or [
   rr (\x -> ampersandE `a` x)
      (\x -> dollarE `a` x),
 
-  -- f -.* (g . f) -> on g f
+  -- f .@ (g . f) -> on g f
   Hard $
   rr (\f g -> oedipusE `a` f `a` (compE `a` g `a` f))
      (\f g -> onE `a` g `a` f),
@@ -695,12 +695,12 @@ rules = Or [
   rr  (\f -> apE `a` f `a` idE)
       (\f -> joinE `a` f),
 
-  -- flip flip f . ((.) .* g) --> f -.** g
+  -- flip flip f . ((.) .* g) --> f .@@ g
   Hard $
   rr (\f g -> (flipE `a` flipE `a` f `c` (compE `c2` g)))
      (\f g -> oedipus2E `a` f `a` g),
 
-  -- (. f) . g --> (f -.* g)
+  -- (. f) . g --> (f .@ g)
   Hard $
   rr (\f g -> (flipE `a` compE `a` f) `c` g)
      (\f g -> oedipusE `a` f `a` g),
@@ -714,7 +714,7 @@ rules = Or [
   rr (\p q -> seqME `a` p `a` q)
      (\p q -> extE `a` (constE `a` q) `a` p),
 
-  -- ap (f -.* ((,) . f . fst)) snd --> f (***) f
+  -- ap (f .@ ((,) . f . fst)) snd --> f (***) f
   Hard $
   rr (\f -> apE `a` (f `o` (commaE `c` f `c` fstE)) `a` sndE)
      (\f -> joinE `a` crossE `a` f),
@@ -741,7 +741,7 @@ rules = Or [
     rr (\f g -> flipE `a` flipE `a` idE `c` (apE `c2` (f `c3` g)))
        (\f g -> mfishE `a` f `a` g),
 
-  -- (`ap` snd) . (fst -.* (flip =<< (.) .* ((,) .))) --> join (***)
+  -- (`ap` snd) . (fst .@ (flip =<< (.) .* ((,) .))) --> join (***)
   -- Hard $
   rr ((flipE `a` apE `a` sndE) `c` (fstE `o` (extE `a` flipE `a` (compE `c2` (compE `a` commaE)))))
      (joinE `a` crossE),
