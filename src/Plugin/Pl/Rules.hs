@@ -165,7 +165,7 @@ idE, flipE, bindE, extE, consE, appendE, nilE, foldrE, foldlE, fstE,
   fixE, foldl1E, notE, equalsE, nequalsE, plusE, multE, zeroE, oneE, lengthE,
   sumE, productE, concatE, concatMapE, joinE, mapE, fmapE, fmapIE, subtractE,
   minusE, liftME, apE, liftM2E, seqME, zipE, zipWithE, onE, oedipusE, oedipus2E, comp2E,
-  crossE, firstE, secondE, andE, orE, allE, anyE, returnE, fishE, mfishE,
+  crossE, arrowE, firstE, secondE, andE, orE, allE, anyE, returnE, fishE, mfishE,
   needleE, mneedleE :: MExpr
 idE        = Quote $ Var Pref "id"
 flipE      = Quote $ Var Pref "flip"
@@ -224,6 +224,7 @@ seqME      = Quote $ Var Inf  ">>"
 zipE       = Quote $ Var Pref "zip"
 zipWithE   = Quote $ Var Pref "zipWith"
 crossE     = Quote $ Var Inf  "***"
+arrowE     = Quote $ Var Inf  "&&&"
 firstE     = Quote $ Var Pref "first"
 secondE    = Quote $ Var Pref "second"
 andE       = Quote $ Var Pref "and"
@@ -714,10 +715,15 @@ rules = Or [
   rr (\p q -> seqME `a` p `a` q)
      (\p q -> extE `a` (constE `a` q) `a` p),
 
-  -- ap (f .@ ((,) . f . fst)) snd --> f (***) f
+  -- ap (f .@ ((,) . f . fst)) snd --> f *** f
   Hard $
   rr (\f -> apE `a` (f `o` (commaE `c` f `c` fstE)) `a` sndE)
      (\f -> joinE `a` crossE `a` f),
+
+  -- liftM2 ap ((,) .* fst) snd --> uncurry (&&&)
+  Hard $
+  rr (liftM2E `a` apE `a` (commaE `c2` fstE) `a` sndE)
+     (uncurryE `a` arrowE),
 
   -- flip (=<<) --> >>=
   rr (flipE `a` extE)
