@@ -15,6 +15,7 @@ module Plugin.Pl.Common (
 import           Control.Arrow         (first, second, (&&&), (***), (+++),
                                         (|||))
 import           Control.Monad
+import           Control.Monad.Fail    (MonadFail)
 import           Data.List             (intersperse, minimumBy)
 import qualified Data.Map              as M
 import           Data.Maybe            (fromJust, fromMaybe, isJust)
@@ -122,7 +123,7 @@ lookupOp k = M.lookup k opFM
 lookupFix :: String -> (Assoc (), Int)
 lookupFix str = fromMaybe (AssocLeft (), 9 + shift) (lookupOp str)
 
-readM :: (Monad m, Read a) => String -> m a
+readM :: (MonadFail m, Monad m, Read a) => String -> m a
 readM s = case [x | (x,t) <- reads s, ("","")  <- lex t] of
             [x] -> return x
             []  -> fail "readM: No parse."
